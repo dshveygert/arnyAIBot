@@ -1,4 +1,5 @@
 import config from 'config';
+import { unlink } from 'fs/promises'
 
 export const accessDenied = ({message}) => {
   let whiteList;
@@ -11,4 +12,13 @@ export const accessDenied = ({message}) => {
     return !(!!message && !!message.from.username && !!whiteList.includes(message.from.username));
   }
   return true;
+}
+
+
+export const removeFile = async (path) => {
+  try {
+    await unlink(path)
+  } catch (e) {
+    console.log('Error while removing file', e.message)
+  }
 }

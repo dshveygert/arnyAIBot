@@ -3,7 +3,7 @@ import { code } from 'telegraf/format';
 import config from 'config';
 import { ogg } from './ogg.js';
 import { openAI } from './openAI.js';
-import { accessDenied } from './utils.js';
+import { accessDenied, removeFile } from './utils.js';
 
 const INITIAL_SESSION = {
   messages: []
@@ -15,11 +15,13 @@ bot.use(session());
 
 bot.command('new', async (ctx) => {
   ctx.session = INITIAL_SESSION;
-  await ctx.reply('I am waiting your voice or text  message');
+  const hey = config.get('USER_MAGIC_LIST')[ctx.message.from.username];
+  await ctx.reply(hey ? hey : 'I am waiting your voice or text  message');
 });
 bot.command('start', async (ctx) => {
   ctx.session = INITIAL_SESSION;
-  await ctx.reply('I am waiting your voice or text  message');
+  const hey = config.get('USER_MAGIC_LIST')[ctx.message.from.username];
+  await ctx.reply(hey ? hey : 'I am waiting your voice or text  message');
 });
 
 bot.on('voice', async (ctx) => {
@@ -27,22 +29,24 @@ bot.on('voice', async (ctx) => {
     ctx.session = INITIAL_SESSION
   }
   if (accessDenied(ctx)) {
-    await ctx.reply(code('...wait'));
+    await ctx.reply(code('Sorry, but access to this application is still not available.'));
     return;
   }
   try {
-    await ctx.reply(code('Sorry, but access to this application is still not available.'));
+    await ctx.reply(code('...wait'));
     const link = await ctx.telegram.getFileLink(ctx.message.voice.file_id);
     const userID = String(ctx.message.from.id);
     const oggPath = await ogg.create(link.href, userID);
     const mp3Path = await ogg.toMP3(oggPath, userID);
-
     const textMessage = await openAI.transcription(mp3Path);
+    await ctx.reply(code(`"${textMessage}"`));
+    await ctx.reply(code('...the answer is being prepared'));
     //const messages = [{role: openAI.role.USER, content: textMessage}];
     ctx.session.messages.push({role: openAI.roles.USER, content: textMessage}); //Add message from User
     const response = await openAI.chat(ctx.session.messages);
     ctx.session.messages.push({role: openAI.roles.ASSISTANT, content: response.content});//Add message from OpenAI
     await ctx.reply(response.content);
+    await removeFile(oggPath);
   } catch(e) {
     console.log('Error', e.message );
   }
@@ -58,8 +62,8 @@ bot.on('text', async (ctx) => {
     return;
   }
   try {
-    console.log('ctx.message ===',ctx.message );
-    await ctx.reply(code('...wait'));
+    //console.log('ctx.message ===',ctx.message );
+    await ctx.reply(code('...the answer is being prepared'));
     //const textMessage = await openAI.transcription(ctx.message.text);
     const textMessage = ctx.message.text;
     //console.log('textMessage ===',textMessage );
