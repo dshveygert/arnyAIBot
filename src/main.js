@@ -1,9 +1,9 @@
 import { Telegraf, session} from "telegraf";
-import {message} from 'telegraf/filters';
 import { code } from 'telegraf/format';
 import config from 'config';
 import { ogg } from './ogg.js';
 import { openAI } from './openAI.js';
+import { accessDenied } from './utils.js';
 
 const INITIAL_SESSION = {
   messages: []
@@ -23,9 +23,15 @@ bot.command('start', async (ctx) => {
 });
 
 bot.on('voice', async (ctx) => {
-  ctx.session ??= INITIAL_SESSION;
-  try {
+  if (!ctx.session) {
+    ctx.session = INITIAL_SESSION
+  }
+  if (accessDenied(ctx)) {
     await ctx.reply(code('...wait'));
+    return;
+  }
+  try {
+    await ctx.reply(code('Sorry, but access to this application is still not available.'));
     const link = await ctx.telegram.getFileLink(ctx.message.voice.file_id);
     const userID = String(ctx.message.from.id);
     const oggPath = await ogg.create(link.href, userID);
@@ -44,16 +50,22 @@ bot.on('voice', async (ctx) => {
 });
 
 bot.on('text', async (ctx) => {
-  ctx.session ??= INITIAL_SESSION;
+  if (!ctx.session) {
+    ctx.session = INITIAL_SESSION
+  }
+  if (accessDenied(ctx)) {
+    await ctx.reply(code('Sorry, but access to this application is still not available.'));
+    return;
+  }
   try {
     console.log('ctx.message ===',ctx.message );
     await ctx.reply(code('...wait'));
     //const textMessage = await openAI.transcription(ctx.message.text);
     const textMessage = ctx.message.text;
-    console.log('textMessage ===',textMessage );
+    //console.log('textMessage ===',textMessage );
     ctx.session.messages.push({role: openAI.roles.USER, content: textMessage}); //Add message from User
     const response = await openAI.chat(ctx.session.messages);
-    console.log('response ===',response );
+    //console.log('response ===',response );
     ctx.session.messages.push({role: openAI.roles.ASSISTANT, content: response.content});//Add message from OpenAI
     await ctx.reply(response.content);
   } catch(e) {
