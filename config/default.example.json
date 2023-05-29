@@ -1,0 +1,6 @@
+{
+  "TELEGRAM_BOT_TOKEN": "token",
+  "OPENAPI_KEY": "token",
+  "OPENAPI_VERSION": "gpt-3.5-turbo",
+  "OPENAPI_TRANSCRIPTION_VERSION": "whisper-1"
+}
